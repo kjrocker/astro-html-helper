@@ -20,6 +20,17 @@ describe("Extracts source strings to frontmatter variables", () => {
     assert.ok(output.includes(`<Image src={photo} />`));
   });
 
+  it("replaces Image component with variable", async () => {
+    const input = `---\n---\n<Image src="https://example.com/test-photo.png" />`;
+    const output = await sourceExtractionTransform(input);
+
+    console.log("Output:", output);
+    assert.ok(
+      output.includes(`const testPhoto = "https://example.com/test-photo.png";`)
+    );
+    assert.ok(output.includes(`<Image src={testPhoto} />`));
+  });
+
   it("replaces img element with variable", async () => {
     const input = `---\n---\n<img src="https://example.com/image.webp" />`;
     const output = await sourceExtractionTransform(input);
@@ -118,5 +129,78 @@ describe("Extracts source strings to frontmatter variables", () => {
 
     assert.ok(output.includes(`const test = "https://example.com/test.avif";`));
     assert.ok(output.includes(`<source src={test} />`));
+  });
+
+  // Additional tests for filename patterns
+  it("handles multiple hyphens in filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/my-super-long-filename.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const mySuperLongFilename = "https://example.com/my-super-long-filename.jpg";`));
+    assert.ok(output.includes(`<Image src={mySuperLongFilename} />`));
+  });
+
+  it("handles underscores in filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/user_profile_image.png" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const userProfileImage = "https://example.com/user_profile_image.png";`));
+    assert.ok(output.includes(`<Image src={userProfileImage} />`));
+  });
+
+  it("handles mixed hyphens and underscores", async () => {
+    const input = `---\n---\n<Image src="https://example.com/header-nav_logo.svg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const headerNavLogo = "https://example.com/header-nav_logo.svg";`));
+    assert.ok(output.includes(`<Image src={headerNavLogo} />`));
+  });
+
+  it("handles numbers in filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/image-2024-01.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const image202401 = "https://example.com/image-2024-01.jpg";`));
+    assert.ok(output.includes(`<Image src={image202401} />`));
+  });
+
+  it("handles filename starting with number", async () => {
+    const input = `---\n---\n<Image src="https://example.com/01-hero-image.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const img01HeroImage = "https://example.com/01-hero-image.jpg";`));
+    assert.ok(output.includes(`<Image src={img01HeroImage} />`));
+  });
+
+  it("handles camelCase filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/heroImage.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const heroImage = "https://example.com/heroImage.jpg";`));
+    assert.ok(output.includes(`<Image src={heroImage} />`));
+  });
+
+  it("handles single letter filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/a.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const a = "https://example.com/a.jpg";`));
+    assert.ok(output.includes(`<Image src={a} />`));
+  });
+
+  it("handles uppercase letters in filename", async () => {
+    const input = `---\n---\n<Image src="https://example.com/MY-LOGO.PNG" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const MYLOGO = "https://example.com/MY-LOGO.PNG";`));
+    assert.ok(output.includes(`<Image src={MYLOGO} />`));
+  });
+
+  it("handles special characters (should be handled gracefully)", async () => {
+    const input = `---\n---\n<Image src="https://example.com/image@2x.jpg" />`;
+    const output = await sourceExtractionTransform(input);
+
+    assert.ok(output.includes(`const image2x = "https://example.com/image@2x.jpg";`));
+    assert.ok(output.includes(`<Image src={image2x} />`));
   });
 });

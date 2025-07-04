@@ -3,7 +3,24 @@ import { parse } from "@astrojs/compiler";
 import { serialize } from "@astrojs/compiler/utils";
 
 const urlToVariableName = (url: string): string => {
-  return url.split("/").pop()?.split(".")[0] || "image";
+  const title = url.split("/").pop()?.split(".")[0];
+  if (!title) return "image";
+  
+  // Convert kebab-case and snake_case to camelCase
+  // Remove non-alphanumeric characters except hyphens and underscores first
+  let cleanTitle = title.replace(/[^a-zA-Z0-9-_]/g, '');
+  
+  // Convert to camelCase
+  cleanTitle = cleanTitle.replace(/[-_]([a-zA-Z0-9])/g, (match, char) => 
+    char.toUpperCase()
+  );
+  
+  // Ensure it starts with a letter or underscore (valid JS identifier)
+  if (/^[0-9]/.test(cleanTitle)) {
+    cleanTitle = 'img' + cleanTitle;
+  }
+  
+  return cleanTitle || "image";
 };
 
 const hasSrcAttribute = (node: any): boolean => {
@@ -70,6 +87,7 @@ export const sourceExtractionTransform = async (
         frontmatterContent += `\n${varDeclaration}`;
       }
     }
+    frontmatterContent += "\n"; // Ensure a newline at the end
 
     fmNode.value = frontmatterContent;
   }

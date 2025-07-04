@@ -1,0 +1,14 @@
+src/
+*.test.ts
+*.test.js
+jest.config.js
+tsconfig.json
+.gitignore
+.claude/
+CLAUDE.md
+node_modules/
+.git/
+*.log
+.DS_Store
+coverage/
+.nyc_output/

@@ -8,7 +8,12 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "npm run clean && npm run build && npm test",
+    "clean": "rm -rf dist",
+    "prepack": "npm run build",
+    "check": "npm run build && npm test",
+    "version": "npm run check"
   },
   "keywords": [
     "astro",
@@ -19,6 +24,17 @@
   "author": "",
   "license": "ISC",
   "description": "CLI helper for Astro HTML manipulation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/astro-html-helper.git"
+  },
+  "homepage": "https://github.com/username/astro-html-helper#readme",
+  "bugs": {
+    "url": "https://github.com/username/astro-html-helper/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",

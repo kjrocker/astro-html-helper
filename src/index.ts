@@ -1,4 +1,3 @@
-export { validateHtml } from "./commands/validate";
 export { transformAstroFile } from "./commands/transform";
 
 // Transform functions

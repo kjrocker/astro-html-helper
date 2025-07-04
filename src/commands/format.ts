@@ -3,12 +3,29 @@ import { pictureTransform } from "../transforms/picture-component";
 import { sourceExtractionTransform } from "../transforms/src-extraction";
 import { EditorChain } from "../utils/editor-chain";
 
-export async function formatHtml(filePath: string): Promise<string> {
+export interface FormatOptions {
+  netlifyForm: boolean;
+  pictures: boolean;
+  pictureSrcString: boolean;
+}
+
+export async function transformAstroFile(
+  filePath: string,
+  formatOptions: FormatOptions = {
+    netlifyForm: false,
+    pictures: true,
+    pictureSrcString: true,
+  }
+): Promise<string> {
   try {
     const chain = (await EditorChain.init(filePath))
-      .chain((text) => netlifyFormsTransform(text))
-      .chain((text) => pictureTransform(text))
-      .chain((text) => sourceExtractionTransform(text));
+      .chain((text) =>
+        formatOptions.netlifyForm ? netlifyFormsTransform(text) : text
+      )
+      .chain((text) => (formatOptions.pictures ? pictureTransform(text) : text))
+      .chain((text) =>
+        formatOptions.pictureSrcString ? sourceExtractionTransform(text) : text
+      );
 
     return await chain.write();
   } catch (error) {

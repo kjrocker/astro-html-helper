@@ -1,5 +1,5 @@
 export { validateHtml } from './commands/validate';
-export { formatHtml } from './commands/format';
+export { transformAstroFile } from './commands/format';
 
 // Transform functions
 export { netlifyFormsTransform } from './transforms/netlify-form';

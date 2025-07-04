@@ -1,9 +1,9 @@
 {
   "name": "astro-html-helper",
   "version": "1.0.0",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "bin": {
-    "astro-html-helper": "dist/cli.js"
+    "astro-html-helper": "dist/src/cli.js"
   },
   "scripts": {
     "build": "tsc",

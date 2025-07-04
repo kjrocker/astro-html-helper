@@ -1,5 +1,5 @@
 import { parse } from "@astrojs/compiler";
-import type { AttributeNode, ElementNode } from "@astrojs/compiler/types";
+import type { AttributeNode, ElementNode, Node } from "@astrojs/compiler/types";
 import { is, serialize, walk } from "@astrojs/compiler/utils";
 
 const netlifyRecaptchaNode: ElementNode = {
@@ -23,7 +23,7 @@ const netlifyFormAttribute: AttributeNode = {
   kind: "expression",
 };
 
-export const netlifyFormsRefactor = async (input: string): Promise<string> => {
+export const netlifyFormsTransform = async (input: string): Promise<string> => {
   const result = await parse(input);
 
   await walk(result.ast, (node) => {

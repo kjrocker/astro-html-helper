@@ -1,30 +1,18 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { netlifyFormsTransform } from "../transforms/netlify-form";
+import { pictureTransform } from "../transforms/picture-component";
+import { sourceExtractionTransform } from "../transforms/src-extraction";
+import { EditorChain } from "../utils/editor-chain";
 
-export function formatHtml(filePath: string, inPlace: boolean = false): string {
+export async function formatHtml(filePath: string): Promise<string> {
   try {
-    const content = readFileSync(filePath, 'utf-8');
-    console.log(`Formatting ${filePath}...`);
-    
-    // Basic HTML formatting logic
-    const formatted = content
-      .replace(/>\s*</g, '>\n<')
-      .replace(/^\s+/gm, '')
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('\n');
-    
-    if (inPlace) {
-      writeFileSync(filePath, formatted, 'utf-8');
-      console.log('✅ File formatted in place');
-    } else {
-      console.log('✅ Formatted content:');
-      console.log(formatted);
-    }
-    
-    return formatted;
+    const chain = (await EditorChain.init(filePath))
+      .chain((text) => netlifyFormsTransform(text))
+      .chain((text) => pictureTransform(text))
+      .chain((text) => sourceExtractionTransform(text));
+
+    return await chain.write();
   } catch (error) {
     console.error(`❌ Error formatting file: ${error}`);
-    return '';
+    return "";
   }
 }

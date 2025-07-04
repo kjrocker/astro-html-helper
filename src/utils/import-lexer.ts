@@ -30,8 +30,8 @@ function insertIntoImport(
 }
 
 export const addPictureToFrontmatter = async (value: string) => {
-  const results = parse(value);
-  const [imports] = results;
+  // The await is important for WASM loading reasons
+  const [imports] = await parse(value);
   const importsAssets = imports.find((imp) => imp.n === "astro:assets");
   if (!importsAssets) {
     return `import { Picture } from "astro:assets";\n${value}`;
@@ -40,8 +40,8 @@ export const addPictureToFrontmatter = async (value: string) => {
 };
 
 export const addImageToFrontmatter = async (value: string) => {
-  const results = parse(value);
-  const [imports] = results;
+  // The await is important for WASM loading reasons
+  const [imports] = await parse(value);
   const importsAssets = imports.find((imp) => imp.n === "astro:assets");
   if (!importsAssets) {
     return `import { Image } from "astro:assets";\n${value}`;

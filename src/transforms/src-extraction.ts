@@ -26,7 +26,7 @@ const isSrcContainingNode = (node: any): boolean => {
   return false;
 };
 
-export const sourceExtractionRefactor = async (
+export const sourceExtractionTransform = async (
   input: string
 ): Promise<string> => {
   const result = await parse(input);

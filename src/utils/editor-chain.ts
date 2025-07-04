@@ -21,6 +21,7 @@ export class EditorChain {
 
   async write() {
     const replaced = await this.promise;
-    writeFile(this.path, replaced);
+    await writeFile(this.path, replaced, "utf-8");
+    return replaced;
   }
 }

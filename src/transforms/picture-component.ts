@@ -153,7 +153,7 @@ export const calculateNewImage = (node: ElementNode): ComponentNode => {
   };
 };
 
-export const pictureRefactor = async (input: string): Promise<string> => {
+export const pictureTransform = async (input: string): Promise<string> => {
   const result = await parse(input);
 
   let hasPicture = false;

@@ -5,7 +5,7 @@ import type {
   FrontmatterNode,
 } from "@astrojs/compiler/types";
 import { parse } from "@astrojs/compiler";
-import { serialize, walk, is } from "@astrojs/compiler/utils";
+import { serialize, is } from "@astrojs/compiler/utils";
 import {
   addImageToFrontmatter,
   addPictureToFrontmatter,
@@ -160,8 +160,8 @@ export const pictureTransform = async (input: string): Promise<string> => {
   let hasImage = false;
   let frontmatterNode: FrontmatterNode | null = null;
 
-  // First pass: find frontmatter node and transform elements
-  await walk(result.ast, (node) => {
+  // Manual recursive walk to handle all nodes properly
+  function walkNode(node: any): void {
     if (is.frontmatter(node)) {
       frontmatterNode = node as FrontmatterNode;
     } else if (is.element(node) && isPicture(node)) {
@@ -181,9 +181,18 @@ export const pictureTransform = async (input: string): Promise<string> => {
       (node as any).children = newNode.children;
       hasImage = true;
     }
-  });
 
-  // Second pass: update frontmatter if we have transformations
+    // Recursively walk children
+    if (node.children) {
+      for (const child of node.children) {
+        walkNode(child);
+      }
+    }
+  }
+
+  walkNode(result.ast);
+
+  // Update frontmatter if we have transformations
   if (frontmatterNode && (hasPicture || hasImage)) {
     const fmNode = frontmatterNode as FrontmatterNode;
     if (hasPicture) {

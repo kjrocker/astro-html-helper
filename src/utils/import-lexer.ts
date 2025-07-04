@@ -34,7 +34,7 @@ export const addPictureToFrontmatter = async (value: string) => {
   const [imports] = await parse(value);
   const importsAssets = imports.find((imp) => imp.n === "astro:assets");
   if (!importsAssets) {
-    return `import { Picture } from "astro:assets";\n${value}`;
+    return `\nimport { Picture } from "astro:assets";\n${value}`;
   }
   return insertIntoImport(value, importsAssets, "Picture");
 };
@@ -44,7 +44,7 @@ export const addImageToFrontmatter = async (value: string) => {
   const [imports] = await parse(value);
   const importsAssets = imports.find((imp) => imp.n === "astro:assets");
   if (!importsAssets) {
-    return `import { Image } from "astro:assets";\n${value}`;
+    return `\nimport { Image } from "astro:assets";\n${value}`;
   }
   return insertIntoImport(value, importsAssets, "Image");
 };

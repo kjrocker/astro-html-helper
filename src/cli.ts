@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { version } from "../package.json";
-import { transformAstroFile } from "./commands/format";
+import { transformAstroFile } from "./commands/transform";
 import { mapOverDirectory } from "./utils/map-directory";
 import { extname } from "path";
 
@@ -29,7 +29,7 @@ program
     };
 
     if (options.file) {
-      if (extname(options.file) !== '.astro') {
+      if (extname(options.file) !== ".astro") {
         console.error("❌ Error: This command only works on .astro files");
         process.exit(1);
       }

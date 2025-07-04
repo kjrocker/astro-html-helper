@@ -2,6 +2,13 @@ import * as assert from "assert";
 import { pictureTransform } from "./picture-component";
 
 describe("Refactors pictures for Astro", () => {
+  it("imports the Picture component with the correct newlines", async () => {
+    const input = `---\n---\n<picture><img src="test.jpg"/></picture>`;
+    const output = await pictureTransform(input);
+    assert.ok(output.includes(`\nimport { Picture } from "astro:assets";`));
+    assert.ok(output.includes(`<Picture src="test.jpg" />`));
+  });
+
   it("replaces picture with Picture, carrying over src attribute", async () => {
     const input = `---\n---\n<picture><img src="test.jpg"/></picture>`;
     const output = await pictureTransform(input);

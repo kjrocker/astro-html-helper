@@ -1,6 +1,7 @@
 import type { FrontmatterNode } from "@astrojs/compiler/types";
 import { parse } from "@astrojs/compiler";
 import { serialize } from "@astrojs/compiler/utils";
+import { walkNode } from "../utils/walk-node";
 
 const urlToVariableName = (url: string): string => {
   const title = url.split("/").pop()?.split(".")[0];
@@ -51,8 +52,8 @@ export const sourceExtractionTransform = async (
   let frontmatterNode: FrontmatterNode | null = null;
   const srcMap = new Map<string, string>(); // variable name -> URL
 
-  // Manual recursive walk to handle all nodes properly
-  function walkNode(node: any): void {
+  // Walk all nodes and apply transformations
+  walkNode(result.ast, (node: any) => {
     if (node.type === "frontmatter") {
       frontmatterNode = node as FrontmatterNode;
     } else if (isSrcContainingNode(node)) {
@@ -65,16 +66,7 @@ export const sourceExtractionTransform = async (
         srcAttr.value = variableName;
       }
     }
-
-    // Recursively walk children
-    if (node.children) {
-      for (const child of node.children) {
-        walkNode(child);
-      }
-    }
-  }
-
-  walkNode(result.ast);
+  });
 
   // Update frontmatter with variable declarations
   if (frontmatterNode && srcMap.size > 0) {

@@ -10,6 +10,7 @@ import {
   addImageToFrontmatter,
   addPictureToFrontmatter,
 } from "../utils/import-lexer";
+import { walkNode } from "../utils/walk-node";
 
 const isPicture = (node: ElementNode) => node.name === "picture";
 
@@ -160,8 +161,8 @@ export const pictureTransform = async (input: string): Promise<string> => {
   let hasImage = false;
   let frontmatterNode: FrontmatterNode | null = null;
 
-  // Manual recursive walk to handle all nodes properly
-  function walkNode(node: any): void {
+  // Walk all nodes and apply transformations
+  walkNode(result.ast, (node: any) => {
     if (is.frontmatter(node)) {
       frontmatterNode = node as FrontmatterNode;
     } else if (is.element(node) && isPicture(node)) {
@@ -181,16 +182,7 @@ export const pictureTransform = async (input: string): Promise<string> => {
       (node as any).children = newNode.children;
       hasImage = true;
     }
-
-    // Recursively walk children
-    if (node.children) {
-      for (const child of node.children) {
-        walkNode(child);
-      }
-    }
-  }
-
-  walkNode(result.ast);
+  });
 
   // Update frontmatter if we have transformations
   if (frontmatterNode && (hasPicture || hasImage)) {

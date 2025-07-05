@@ -26,7 +26,7 @@
   "description": "CLI helper for Astro HTML manipulation",
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/astro-html-helper.git"
+    "url": "git+https://github.com/username/astro-html-helper.git"
   },
   "homepage": "https://github.com/username/astro-html-helper#readme",
   "bugs": {

@@ -21,11 +21,13 @@ program
   .option("--netlify-form", "Enable Netlify form transformation")
   .option("--no-pictures", "Disable picture component transformation")
   .option("--no-picture-src-string", "Disable picture src string extraction")
+  .option("--image-dir <directory>", "Download remote images to this directory and create imports")
   .action(async (options) => {
     const formatOptions = {
       netlifyForm: options.netlifyForm || false,
       pictures: options.pictures !== false,
       pictureSrcString: options.pictureSrcString !== false,
+      imageDir: options.imageDir,
     };
 
     if (options.file) {

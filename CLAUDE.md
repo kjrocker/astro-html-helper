@@ -64,6 +64,7 @@ This is a CLI tool for transforming Astro files created from plain HTML. The arc
 - Uses Node.js `assert` module for assertions (compatible with Jest)
 - Each transform has comprehensive test coverage
 - Tests use sample Astro file content with frontmatter
+- Temporary test files are placed in the `scaffolding` directory
 
 ### Import Structure
 

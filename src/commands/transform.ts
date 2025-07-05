@@ -7,6 +7,7 @@ export interface FormatOptions {
   netlifyForm: boolean;
   pictures: boolean;
   pictureSrcString: boolean;
+  imageDir?: string;
 }
 
 export async function transformAstroFile(
@@ -24,7 +25,7 @@ export async function transformAstroFile(
       )
       .chain((text) => (formatOptions.pictures ? pictureTransform(text) : text))
       .chain((text) =>
-        formatOptions.pictureSrcString ? sourceExtractionTransform(text) : text
+        formatOptions.pictureSrcString ? sourceExtractionTransform(text, formatOptions.imageDir, filePath) : text
       );
 
     return await chain.write();

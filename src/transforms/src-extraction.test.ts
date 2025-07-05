@@ -1,5 +1,8 @@
 import * as assert from "assert";
 import { sourceExtractionTransform } from "./src-extraction";
+import { mkdirSync, writeFileSync, rmSync, existsSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 describe("Extracts source strings to frontmatter variables", () => {
   it("replaces Picture component with variable", async () => {
@@ -202,5 +205,211 @@ describe("Extracts source strings to frontmatter variables", () => {
 
     assert.ok(output.includes(`const image2x = "https://example.com/image@2x.jpg";`));
     assert.ok(output.includes(`<Image src={image2x} />`));
+  });
+});
+
+describe("Image download and import functionality", () => {
+  let tempDir: string;
+  let testImageDir: string;
+  
+  // Mock fetch for testing
+  const originalFetch = global.fetch;
+  
+  beforeEach(() => {
+    tempDir = join(tmpdir(), `astro-test-${Date.now()}`);
+    testImageDir = join(tempDir, "images");
+    mkdirSync(testImageDir, { recursive: true });
+    
+    // Mock fetch to return a simple image buffer
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
+    });
+  });
+  
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+    global.fetch = originalFetch;
+  });
+
+  it("creates import statements for downloaded remote images", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement instead of variable
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    
+    // Should not create variable declaration
+    assert.ok(!output.includes(`const hero = "https://example.com/hero.jpg";`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("creates import statements for multiple remote images", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />\n<Picture src="https://example.com/banner.png" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statements for both images
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`import banner from "./images/banner.png";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    assert.ok(output.includes(`<Picture src={banner} />`));
+    
+    // Should have downloaded both files
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+    assert.ok(existsSync(join(testImageDir, "banner.png")));
+  });
+
+  it("handles mixed remote and local images", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />\n<Image src="./local-image.png" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Remote image should get import statement
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    
+    // Local image should get variable declaration
+    assert.ok(output.includes(`const localImage = "./local-image.png";`));
+    assert.ok(output.includes(`<Image src={localImage} />`));
+    
+    // Only remote image should be downloaded
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("fallback to variable when download fails", async () => {
+    // Mock fetch to fail
+    global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+    
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should fallback to variable declaration
+    assert.ok(output.includes(`const hero = "https://example.com/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    
+    // Should not create import statement
+    assert.ok(!output.includes(`import hero from`));
+    
+    // Should not have downloaded the file
+    assert.ok(!existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("handles relative import paths correctly", async () => {
+    const subDir = join(tempDir, "src", "pages");
+    mkdirSync(subDir, { recursive: true });
+    const currentFilePath = join(subDir, "page.astro");
+    
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />`;
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create correct relative import path
+    assert.ok(output.includes(`import hero from "../../images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+  });
+
+  it("handles duplicate image URLs by reusing existing files", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />\n<Picture src="https://example.com/hero.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Pre-create the file to simulate existing download
+    writeFileSync(join(testImageDir, "hero.jpg"), "existing content");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statements for both usages
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    assert.ok(output.includes(`<Picture src={hero} />`));
+    
+    // Should only call fetch once (or not at all since file exists)
+    expect(global.fetch).toHaveBeenCalledTimes(0);
+  });
+
+  it("handles images with query parameters", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg?w=800&h=600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement with clean filename
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    
+    // Should have downloaded the file with clean name
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("handles images with complex paths", async () => {
+    const input = `---\n---\n<Image src="https://cdn.example.com/assets/images/hero-image.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement with camelCase variable name
+    assert.ok(output.includes(`import heroImage from "./images/hero-image.jpg";`));
+    assert.ok(output.includes(`<Image src={heroImage} />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "hero-image.jpg")));
+  });
+
+  it("preserves existing frontmatter when adding imports", async () => {
+    const input = `---\nconst title = "My Page";\nconst description = "A test page";\n---\n<Image src="https://example.com/hero.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should preserve existing frontmatter
+    assert.ok(output.includes(`const title = "My Page";`));
+    assert.ok(output.includes(`const description = "A test page";`));
+    
+    // Should add import statement
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+  });
+
+  it("works without imageDir parameter (standard behavior)", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />`;
+    
+    const output = await sourceExtractionTransform(input);
+    
+    // Should create variable declaration (standard behavior)
+    assert.ok(output.includes(`const hero = "https://example.com/hero.jpg";`));
+    assert.ok(output.includes(`<Image src={hero} />`));
+    
+    // Should not create import statement
+    assert.ok(!output.includes(`import hero from`));
+    
+    // Should not call fetch
+    expect(global.fetch).toHaveBeenCalledTimes(0);
+  });
+
+  it("only downloads images when imageDir is provided", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" />\n<Image src="./local.jpg" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Remote image should be downloaded and imported
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    
+    // Local image should use variable (not remote)
+    assert.ok(output.includes(`const local = "./local.jpg";`));
+    
+    // Should only call fetch for remote image
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

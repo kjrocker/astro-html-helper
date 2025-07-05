@@ -27,7 +27,6 @@ describe("Extracts source strings to frontmatter variables", () => {
     const input = `---\n---\n<Image src="https://example.com/test-photo.png" />`;
     const output = await sourceExtractionTransform(input);
 
-    console.log("Output:", output);
     assert.ok(
       output.includes(`const testPhoto = "https://example.com/test-photo.png";`)
     );
@@ -411,5 +410,497 @@ describe("Image download and import functionality", () => {
     
     // Should only call fetch for remote image
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Height/Width attribute removal for downloaded images", () => {
+  let tempDir: string;
+  let testImageDir: string;
+  
+  // Mock fetch for testing
+  const originalFetch = global.fetch;
+  
+  beforeEach(() => {
+    tempDir = join(tmpdir(), `astro-test-${Date.now()}`);
+    testImageDir = join(tempDir, "images");
+    mkdirSync(testImageDir, { recursive: true });
+    
+    // Mock fetch to return a simple image buffer
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
+    });
+  });
+  
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+    global.fetch = originalFetch;
+  });
+
+  it("preserves height/width attributes from Picture component with downloaded remote image (not in src directory)", async () => {
+    const input = `---\n---\n<Picture src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    
+    // Should preserve height/width attributes since image is not in 'src' directory
+    assert.ok(output.includes(`<Picture src={hero} alt="Hero" width="800" height="600" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("preserves height/width attributes from Image component with downloaded remote image (not in src directory)", async () => {
+    const input = `---\n---\n<Image src="https://example.com/logo.png" alt="Logo" width="200" height="100" class="logo" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import logo from "./images/logo.png";`));
+    
+    // Should preserve height/width attributes since image is not in 'src' directory
+    assert.ok(output.includes(`<Image src={logo} alt="Logo" width="200" height="100" class="logo" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "logo.png")));
+  });
+
+  it("preserves height/width attributes from img element with downloaded remote image (not in src directory)", async () => {
+    const input = `---\n---\n<img src="https://example.com/banner.jpg" alt="Banner" width="1200" height="400" loading="lazy" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import banner from "./images/banner.jpg";`));
+    
+    // Should preserve height/width attributes since image is not in 'src' directory
+    assert.ok(output.includes(`<img src={banner} alt="Banner" width="1200" height="400" loading="lazy" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "banner.jpg")));
+  });
+
+  it("preserves height/width attributes from picture element with downloaded remote image (not in src directory)", async () => {
+    const input = `---\n---\n<picture width="800" height="600"><source src="https://example.com/hero.avif" /></picture>`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./images/hero.avif";`));
+    
+    // Should preserve height/width attributes since image is not in 'src' directory
+    assert.ok(output.includes(`<picture width="800" height="600"><source src={hero} /></picture>`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "hero.avif")));
+  });
+
+  it("preserves height/width attributes when image download fails", async () => {
+    // Mock fetch to fail
+    global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+    
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should fallback to variable declaration
+    assert.ok(output.includes(`const hero = "https://example.com/hero.jpg";`));
+    
+    // Should preserve height/width attributes since download failed
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" width="800" height="600" />`));
+    
+    // Should not have downloaded the file
+    assert.ok(!existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("preserves height/width attributes for local images", async () => {
+    const input = `---\n---\n<Image src="./local-hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create variable declaration (not import)
+    assert.ok(output.includes(`const localHero = "./local-hero.jpg";`));
+    
+    // Should preserve height/width attributes for local images
+    assert.ok(output.includes(`<Image src={localHero} alt="Hero" width="800" height="600" />`));
+    
+    // Should not call fetch for local images
+    expect(global.fetch).toHaveBeenCalledTimes(0);
+  });
+
+  it("preserves height/width attributes when no imageDir is provided", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    
+    const output = await sourceExtractionTransform(input);
+    
+    // Should create variable declaration (standard behavior)
+    assert.ok(output.includes(`const hero = "https://example.com/hero.jpg";`));
+    
+    // Should preserve height/width attributes when no imageDir provided
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" width="800" height="600" />`));
+    
+    // Should not call fetch
+    expect(global.fetch).toHaveBeenCalledTimes(0);
+  });
+
+  it("handles mixed images - preserves attributes for all when not in src directory", async () => {
+    const input = `---\n---\n<Image src="https://example.com/remote.jpg" alt="Remote" width="800" height="600" />\n<Image src="./local.jpg" alt="Local" width="400" height="300" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Remote image should be downloaded and imported
+    assert.ok(output.includes(`import remote from "./images/remote.jpg";`));
+    
+    // Local image should use variable
+    assert.ok(output.includes(`const local = "./local.jpg";`));
+    
+    // Height/width should be preserved for downloaded image (not in src directory)
+    assert.ok(output.includes(`<Image src={remote} alt="Remote" width="800" height="600" />`));
+    
+    // Height/width should be preserved for local image
+    assert.ok(output.includes(`<Image src={local} alt="Local" width="400" height="300" />`));
+    
+    // Should only call fetch for remote image
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("handles multiple remote images - preserves attributes when not in src directory", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />\n<Picture src="https://example.com/banner.png" alt="Banner" width="1200" height="400" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statements for both images
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    assert.ok(output.includes(`import banner from "./images/banner.png";`));
+    
+    // Should preserve height/width from both components since not in src directory
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" width="800" height="600" />`));
+    assert.ok(output.includes(`<Picture src={banner} alt="Banner" width="1200" height="400" />`));
+    
+    // Should have downloaded both files
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+    assert.ok(existsSync(join(testImageDir, "banner.png")));
+  });
+
+  it("handles complex scenario with Picture component containing nested img (preserves attributes when not in src directory)", async () => {
+    const input = `---\n---\n<picture width="800" height="600"><img src="https://example.com/responsive.jpg" alt="Responsive" width="800" height="600" /></picture>`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import responsive from "./images/responsive.jpg";`));
+    
+    // Should preserve height/width from both picture and img elements since not in src directory
+    assert.ok(output.includes(`<picture width="800" height="600"><img src={responsive} alt="Responsive" width="800" height="600" /></picture>`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "responsive.jpg")));
+  });
+
+  // Tests for height/width removal when images ARE in src directory
+  it("removes height/width attributes from Picture component when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<Picture src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./src/hero.jpg";`));
+    
+    // Should remove height/width attributes since image is in src directory
+    assert.ok(output.includes(`<Picture src={hero} alt="Hero" />`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "hero.jpg")));
+  });
+
+  it("removes height/width attributes from Image component when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<Image src="https://example.com/logo.png" alt="Logo" width="200" height="100" class="logo" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import logo from "./src/logo.png";`));
+    
+    // Should remove height/width attributes but keep other attributes
+    assert.ok(output.includes(`<Image src={logo} alt="Logo" class="logo" />`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "logo.png")));
+  });
+
+  it("removes height/width attributes from img element when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<img src="https://example.com/banner.jpg" alt="Banner" width="1200" height="400" loading="lazy" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import banner from "./src/banner.jpg";`));
+    
+    // Should remove height/width attributes but keep other attributes
+    assert.ok(output.includes(`<img src={banner} alt="Banner" loading="lazy" />`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "banner.jpg")));
+  });
+
+  it("removes height/width attributes from picture element when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<picture width="800" height="600"><source src="https://example.com/hero.avif" /></picture>`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./src/hero.avif";`));
+    
+    // Should remove height/width attributes from picture element
+    assert.ok(output.includes(`<picture><source src={hero} /></picture>`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "hero.avif")));
+  });
+
+  it("removes height/width from multiple images when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />\n<Picture src="https://example.com/banner.png" alt="Banner" width="1200" height="400" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statements for both images
+    assert.ok(output.includes(`import hero from "./src/hero.jpg";`));
+    assert.ok(output.includes(`import banner from "./src/banner.png";`));
+    
+    // Should remove height/width from both components
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" />`));
+    assert.ok(output.includes(`<Picture src={banner} alt="Banner" />`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded both files
+    assert.ok(existsSync(join(testSrcDir, "hero.jpg")));
+    assert.ok(existsSync(join(testSrcDir, "banner.png")));
+  });
+
+  it("removes height/width from complex nested picture when in src directory", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<picture width="800" height="600"><img src="https://example.com/responsive.jpg" alt="Responsive" width="800" height="600" /></picture>`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import responsive from "./src/responsive.jpg";`));
+    
+    // Should remove height/width from both picture and img elements
+    assert.ok(output.includes(`<picture><img src={responsive} alt="Responsive" /></picture>`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "responsive.jpg")));
+  });
+
+  it("handles mixed images when in src directory - removes from downloaded, preserves for local", async () => {
+    const testSrcDir = join(tempDir, "src");
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    const input = `---\n---\n<Image src="https://example.com/remote.jpg" alt="Remote" width="800" height="600" />\n<Image src="./local.jpg" alt="Local" width="400" height="300" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Remote image should be downloaded and imported
+    assert.ok(output.includes(`import remote from "./src/remote.jpg";`));
+    
+    // Local image should use variable
+    assert.ok(output.includes(`const local = "./local.jpg";`));
+    
+    // Height/width should be removed from downloaded image (in src directory)
+    assert.ok(output.includes(`<Image src={remote} alt="Remote" />`));
+    
+    // Height/width should be preserved for local image
+    assert.ok(output.includes(`<Image src={local} alt="Local" width="400" height="300" />`));
+    
+    // Should only call fetch for remote image
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Height/Width attribute removal rules", () => {
+  let tempDir: string;
+  let testImageDir: string;
+  let testSrcDir: string;
+  
+  // Mock fetch for testing
+  const originalFetch = global.fetch;
+  
+  beforeEach(() => {
+    tempDir = join(tmpdir(), `astro-test-${Date.now()}`);
+    testImageDir = join(tempDir, "images");
+    testSrcDir = join(tempDir, "src");
+    mkdirSync(testImageDir, { recursive: true });
+    mkdirSync(testSrcDir, { recursive: true });
+    
+    // Mock fetch to return a simple image buffer
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(100)),
+    });
+  });
+  
+  afterEach(() => {
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+    global.fetch = originalFetch;
+  });
+
+  it("removes height/width attributes only when image is placed in 'src' directory", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testSrcDir which contains 'src' in the path
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./src/hero.jpg";`));
+    
+    // Should remove height/width attributes since image is in 'src' directory
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" />`));
+    assert.ok(!output.includes(`width=`));
+    assert.ok(!output.includes(`height=`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "hero.jpg")));
+  });
+
+  it("preserves height/width attributes when image is NOT in 'src' directory", async () => {
+    const input = `---\n---\n<Image src="https://example.com/hero.jpg" alt="Hero" width="800" height="600" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testImageDir which doesn't contain 'src' in the path
+    const output = await sourceExtractionTransform(input, testImageDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import hero from "./images/hero.jpg";`));
+    
+    // Should preserve height/width attributes since image is not in 'src' directory
+    assert.ok(output.includes(`<Image src={hero} alt="Hero" width="800" height="600" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testImageDir, "hero.jpg")));
+  });
+
+  it("never removes height/width attributes for SVG files (overrides src directory rule)", async () => {
+    const input = `---\n---\n<Image src="https://example.com/logo.svg" alt="Logo" width="200" height="100" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testSrcDir which contains 'src' in the path
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import logo from "./src/logo.svg";`));
+    
+    // Should preserve height/width attributes for SVG even though it's in 'src' directory
+    assert.ok(output.includes(`<Image src={logo} alt="Logo" width="200" height="100" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "logo.svg")));
+  });
+
+  it("handles SVG files with uppercase extension", async () => {
+    const input = `---\n---\n<Image src="https://example.com/icon.SVG" alt="Icon" width="50" height="50" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testSrcDir which contains 'src' in the path
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import icon from "./src/icon.SVG";`));
+    
+    // Should preserve height/width attributes for SVG (case insensitive)
+    assert.ok(output.includes(`<Image src={icon} alt="Icon" width="50" height="50" />`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "icon.SVG")));
+  });
+
+  it("removes height/width for non-SVG images in 'src' directory", async () => {
+    const input = `---\n---\n<Image src="https://example.com/photo.jpg" alt="Photo" width="400" height="300" />\n<Image src="https://example.com/icon.svg" alt="Icon" width="50" height="50" />`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testSrcDir which contains 'src' in the path
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statements for both images
+    assert.ok(output.includes(`import photo from "./src/photo.jpg";`));
+    assert.ok(output.includes(`import icon from "./src/icon.svg";`));
+    
+    // Should remove height/width from non-SVG image
+    assert.ok(output.includes(`<Image src={photo} alt="Photo" />`));
+    
+    // Should preserve height/width for SVG image
+    assert.ok(output.includes(`<Image src={icon} alt="Icon" width="50" height="50" />`));
+    
+    // Should have downloaded both files
+    assert.ok(existsSync(join(testSrcDir, "photo.jpg")));
+    assert.ok(existsSync(join(testSrcDir, "icon.svg")));
+  });
+
+  it("handles picture elements with SVG sources", async () => {
+    const input = `---\n---\n<picture width="200" height="100"><source src="https://example.com/vector.svg" /></picture>`;
+    const currentFilePath = join(tempDir, "page.astro");
+    
+    // Use testSrcDir which contains 'src' in the path
+    const output = await sourceExtractionTransform(input, testSrcDir, currentFilePath);
+    
+    // Should create import statement
+    assert.ok(output.includes(`import vector from "./src/vector.svg";`));
+    
+    // Should preserve height/width attributes for picture element with SVG source
+    assert.ok(output.includes(`<picture width="200" height="100"><source src={vector} /></picture>`));
+    
+    // Should have downloaded the file
+    assert.ok(existsSync(join(testSrcDir, "vector.svg")));
   });
 });

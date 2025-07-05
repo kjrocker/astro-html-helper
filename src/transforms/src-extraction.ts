@@ -108,6 +108,70 @@ export const sourceExtractionTransform = async (
     }
   }
 
+  // Remove height/width attributes from Picture/Image components 
+  // for successfully downloaded images placed in 'src' directory, except for SVGs
+  if (imageDir && importMap.size > 0) {
+    const downloadedVariables = new Set(importMap.keys());
+    
+    walkNode(result.ast, (node: Node) => {
+      if (
+        (node.type === "component" &&
+          (node.name === "Picture" || node.name === "Image")) ||
+        (node.type === "element" &&
+          (node.name === "img" || node.name === "picture"))
+      ) {
+        // Check if this node or its children have src attributes that match downloaded images
+        let shouldRemoveAttributes = false;
+        let imageUrl = "";
+        
+        // Check if this node has a src attribute pointing to a downloaded image
+        const srcAttr = node.attributes.find((attr: any) => attr.name === "src");
+        if (srcAttr && srcAttr.kind === "expression") {
+          const variableName = srcAttr.value;
+          if (downloadedVariables.has(variableName)) {
+            imageUrl = srcMap.get(variableName) || "";
+            shouldRemoveAttributes = true;
+          }
+        }
+        
+        // For picture elements, also check child nodes (source, img)
+        let childVariableName = "";
+        if (node.type === "element" && node.name === "picture") {
+          walkNode(node, (childNode: Node) => {
+            if (childNode.type === "element" && 
+                (childNode.name === "source" || childNode.name === "img")) {
+              const childSrcAttr = childNode.attributes.find((attr: any) => attr.name === "src");
+              if (childSrcAttr && childSrcAttr.kind === "expression") {
+                const variableName = childSrcAttr.value;
+                if (downloadedVariables.has(variableName)) {
+                  imageUrl = srcMap.get(variableName) || "";
+                  childVariableName = variableName;
+                  shouldRemoveAttributes = true;
+                }
+              }
+            }
+          });
+        }
+        
+        if (shouldRemoveAttributes) {
+          // Use the appropriate variable name for path lookup
+          const variableToCheck = childVariableName || (srcAttr?.value || "");
+          const imagePath = importMap.get(variableToCheck);
+          const isInSrcDirectory = imagePath && imagePath.includes("/src/");
+          const isSvg = imageUrl.toLowerCase().endsWith(".svg");
+          
+          // Only remove height/width if image is in 'src' directory AND not an SVG
+          if (isInSrcDirectory && !isSvg) {
+            // Remove height and width attributes
+            node.attributes = node.attributes.filter(
+              (attr: any) => attr.name !== "height" && attr.name !== "width"
+            );
+          }
+        }
+      }
+    });
+  }
+
   // Update frontmatter with import statements or variable declarations
   if (frontmatterNode && srcMap.size > 0) {
     const fmNode = frontmatterNode as FrontmatterNode;

@@ -44,6 +44,8 @@
   },
   "dependencies": {
     "@astrojs/compiler": "^2.12.2",
+    "@optique/core": "^0.6.1",
+    "@optique/run": "^0.6.1",
     "commander": "^14.0.0",
     "es-module-lexer": "^1.7.0"
   },

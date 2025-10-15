@@ -5,6 +5,40 @@ import { version } from "../package.json";
 import { transformAstroFile } from "./commands/transform";
 import { mapOverDirectory } from "./utils/map-directory";
 import { extname } from "path";
+// import {
+//   argument,
+//   command,
+//   constant,
+//   map,
+//   object,
+//   option,
+//   or,
+// } from "@optique/core";
+// import { path, run } from "@optique/run";
+
+// const parser = or(
+//   object({
+//     mode: constant("file"),
+//     input: argument(path({ mustExist: true, type: "file" })),
+//     netlifyForm: option("--netlify-form"),
+//     imageDirectory: option(
+//       "--image-dir",
+//       path({ mustExist: false, allowCreate: true, type: "directory" })
+//     ),
+//   }),
+//   object({
+//     mode: constant("directory"),
+//     input: argument(path({ mustExist: true, type: "directory" })),
+//     netlifyForm: option("--netlify-form"),
+//     imageDirectory: option(
+//       "--image-dir",
+//       path({ mustExist: false, allowCreate: true, type: "directory" })
+//     ),
+//   })
+// );
+
+// const result = run(parser);
+// console.log(`Starting server ${result.mode} on port ${result.mode}`);
 
 const program = new Command();
 
@@ -19,14 +53,15 @@ program
   .option("-f, --file <file>", "Astro file to transform")
   .option("-d, --dir <directory>", "Directory to transform")
   .option("--netlify-form", "Enable Netlify form transformation")
-  .option("--no-pictures", "Disable picture component transformation")
-  .option("--no-picture-src-string", "Disable picture src string extraction")
-  .option("--image-dir <directory>", "Download remote images to this directory and create imports")
+  .option(
+    "--image-dir <directory>",
+    "Download remote images to this directory and create imports"
+  )
   .action(async (options) => {
     const formatOptions = {
       netlifyForm: options.netlifyForm || false,
-      pictures: options.pictures !== false,
-      pictureSrcString: options.pictureSrcString !== false,
+      pictures: true,
+      pictureSrcString: true,
       imageDir: options.imageDir,
     };
 

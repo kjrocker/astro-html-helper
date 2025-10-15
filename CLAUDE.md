@@ -18,7 +18,7 @@ This is a CLI tool for transforming Astro files created from plain HTML. The arc
 **CLI Entry Point** (`src/cli.ts`):
 - Uses Commander.js for CLI interface
 - Main command: `transform` with `-f` (file) or `-d` (directory) options
-- Transform options: `--netlify-form`, `--no-pictures`, `--no-picture-src-string`
+- Transform options: `--netlify-form`
 - Only processes `.astro` files (validation enforced)
 
 **Transform Pipeline** (`src/commands/format.ts`):
@@ -48,7 +48,7 @@ This is a CLI tool for transforming Astro files created from plain HTML. The arc
 
 - `@astrojs/compiler` - AST parsing/serialization for Astro files
 - `es-module-lexer` - Import statement analysis and modification
-- `commander` - CLI argument parsing
+- `@optique/core` - CLI argument parsing
 - `jest` + `ts-jest` - Testing framework
 
 ### File Processing Logic

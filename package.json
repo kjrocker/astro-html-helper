@@ -13,7 +13,8 @@
     "clean": "rm -rf dist",
     "prepack": "npm run build",
     "check": "npm run build && npm test",
-    "version": "npm run check"
+    "version": "npm run check",
+    "transform": "npm run build && node dist/src/cli.js"
   },
   "keywords": [
     "astro",
@@ -46,7 +47,6 @@
     "@astrojs/compiler": "^2.12.2",
     "@optique/core": "^0.6.1",
     "@optique/run": "^0.6.1",
-    "commander": "^14.0.0",
     "es-module-lexer": "^1.7.0"
   },
   "files": [

@@ -1,9 +1,9 @@
 {
   "name": "astro-html-helper",
-  "version": "2.0.0",
-  "main": "dist/src/index.js",
+  "version": "2.1.0",
+  "main": "dist/index.js",
   "bin": {
-    "astro-html-helper": "dist/src/cli.js"
+    "astro-html-helper": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -14,7 +14,7 @@
     "prepack": "npm run build",
     "check": "npm run build && npm test",
     "version": "npm run check",
-    "transform": "npm run build && node dist/src/cli.js"
+    "transform": "npm run build && node dist/cli.js"
   },
   "keywords": [
     "astro",

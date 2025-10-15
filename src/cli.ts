@@ -16,7 +16,7 @@ const parser = or(
       path({ mustExist: true, type: "file", extensions: [".astro"] })
     ),
     netlifyForm: option("--netlify-form"),
-    imageDirectory: option(
+    imageDir: option(
       "--image-dir",
       path({ mustExist: false, allowCreate: true, type: "directory" })
     ),
@@ -27,7 +27,7 @@ const parser = or(
     pictureSrcString: constant(true),
     input: option("-d", "--dir", path({ mustExist: true, type: "directory" })),
     netlifyForm: option("--netlify-form"),
-    imageDirectory: option(
+    imageDir: option(
       "--image-dir",
       path({ mustExist: false, allowCreate: true, type: "directory" })
     ),

@@ -61,6 +61,14 @@ describe("Refactors pictures for Astro", () => {
       output.includes(`<Picture src="test.jpg" alt="A descriptive alt text" />`)
     );
   });
+
+  it("imports the Picture component after header comments", async () => {
+    const input = `---\n// Important Comment\n---\n<picture><img src="test.jpg"/></picture>`;
+    const output = await pictureTransform(input);
+    assert.ok(output.includes(`---\n// Important Comment`));
+    assert.ok(output.includes(`\nimport { Picture } from "astro:assets";`));
+    assert.ok(output.includes(`<Picture src="test.jpg" />`));
+  });
 });
 
 describe("Refactors images for Astro", () => {

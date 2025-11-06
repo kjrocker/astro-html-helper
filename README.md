@@ -47,7 +47,7 @@ astro-html-helper -f input.astro
 When the `--image-dir` option is provided, remote images are automatically downloaded and imported:
 
 ```bash
-npx astro-html-helper transform -f page.astro --image-dir ./src/assets/images
+npx astro-html-helper -f page.astro --image-dir ./src/assets/images
 ```
 
 **Before:**
@@ -60,18 +60,11 @@ npx astro-html-helper transform -f page.astro --image-dir ./src/assets/images
 **After:**
 ```astro
 ---
+import { Image } from "astro:assets";
 import heroImage from "./assets/images/hero-image.jpg";
 ---
-<img src={heroImage} alt="Hero" />
+<Image src={heroImage} alt="Hero" />
 ```
-
-This enables Astro's built-in image optimization for remote images by converting them to local imports.
-
-**Key Features:**
-- ✅ Only downloads remote URLs (http/https)
-- ✅ Skips download if file already exists
-- ✅ Preserves existing frontmatter content
-- ✅ Works with `<img>`, `<Picture>`, `<Image>`, and `<source>` elements
 
 ### Netlify Forms
 
